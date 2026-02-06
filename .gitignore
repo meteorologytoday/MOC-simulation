@@ -1,0 +1,14 @@
+*.tmp
+*.swp
+*.swo
+*.pyc
+__pycache__
+.ipynb_checkpoints
+*.DS_Store
+*.egg-info
+CLAUDE.md
+.vscode/
+.idea/
+env/
+*.nc
+
