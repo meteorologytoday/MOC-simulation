@@ -63,7 +63,6 @@ model = HydrostaticFreeSurfaceModel(
 ϵ(x, y, z) = 2rand() - 1
 set!(model, u=ϵ, v=ϵ)
 
-
 @printf("Construct Simulation object\n")
 simulation = Simulation(model; Δt=Δt, stop_time=stop_time)
 progress(sim) = @printf("Iter: % 6d, sim time: % 1.3f, wall time: % 10s, Δt: % 1.4f, advective CFL: %.2e, diffusive CFL: %.2e\n",
@@ -71,6 +70,17 @@ progress(sim) = @printf("Iter: % 6d, sim time: % 1.3f, wall time: % 10s, Δt: % 
                         sim.Δt, AdvectiveCFL(sim.Δt)(sim.model), DiffusiveCFL(sim.Δt)(sim.model))
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
+
+@printf("Setup output writer\n")
+save_fields_interval = 6hours
+b = model.tracers.b
+filename_prefix = "output_MOC"
+simulation.output_writers[:full] = JLD2OutputWriter(model, (; b);
+        filename = filename_prefix * "_full",
+        schedule = TimeInterval(save_fields_interval),
+        overwrite_existing = true,
+)
+
 
 
 @printf("Model information:\n")
