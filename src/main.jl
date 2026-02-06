@@ -21,12 +21,12 @@ grid = LatitudeLongitudeGrid(GPU(); size=(nlon, nlat, nz), halo=(3, 3, 3), topol
 
 @printf("Create boundary conditions\n")
 
-const ρ0 = 1025.0,
-const cp = 3999.0,
-const τx = 0.1, # N/m^2 
-const τy = 0.0,
-const Q = 200.0,
-const F = 1e-7, # m/s ( 3 m/year )
+const ρ0 = 1025.0
+const cp = 3999.0
+const τx = 0.1 # N/m^2 
+const τy = 0.0
+const Q = 200.0
+const F = 1e-7 # m/s ( 3 m/year )
 const S0 = 35.0
 
 Q_T(x, y, t) = Q / (ρ0 * cp)
