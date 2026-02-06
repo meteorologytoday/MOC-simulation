@@ -1,7 +1,9 @@
 using Printf
+using NCDatasets
 using Oceananigans
 using Oceananigans.Units
-using CUDA
+using Oceananigans.OutputWriters
+#using CUDA
 
 Δt=3600seconds
 stop_time=10days
@@ -10,6 +12,11 @@ stop_time=10days
 nlat = 120
 nlon = 60
 nz = 40
+
+#nlat = 60
+#nlon = 30
+#nz = 20
+
 latitude_bounds = range(-60, 60, length=nlat+1) |> collect
 longitude_bounds = range(0, 60, length=nlon+1) |> collect
 z_bounds = range(-4kilometers, 0, length=nz+1) |> collect
@@ -17,7 +24,7 @@ z_bounds = range(-4kilometers, 0, length=nz+1) |> collect
 # %%
 
 @printf("Grid generation...\n")
-grid = LatitudeLongitudeGrid(GPU(); size=(nlon, nlat, nz), halo=(3, 3, 3), topology=(Bounded, Bounded, Bounded), latitude=latitude_bounds, longitude=longitude_bounds, z=z_bounds)
+grid = LatitudeLongitudeGrid(CPU(); size=(nlon, nlat, nz), halo=(3, 3, 3), topology=(Bounded, Bounded, Bounded), latitude=latitude_bounds, longitude=longitude_bounds, z=z_bounds)
 
 @printf("Create boundary conditions\n")
 
@@ -52,8 +59,8 @@ boundary_conditions = (
 @printf("Model creation\n")
 model = HydrostaticFreeSurfaceModel(
     grid;
-    buoyancy = BuoyancyTracer(),
-    tracers = :b,
+    buoyancy = SeawaterBuoyancy(),
+    tracers = (:T, :S),
     momentum_advection = WENO(),
     tracer_advection = WENO(),
     boundary_conditions = boundary_conditions,
@@ -61,7 +68,9 @@ model = HydrostaticFreeSurfaceModel(
 
 @printf("Set initial conditions\n")
 ϵ(x, y, z) = 2rand() - 1
-set!(model, u=ϵ, v=ϵ)
+Tᵢ(λ, φ, z) = 30
+Sᵢ(λ, φ, z) = 28
+set!(model, T=Tᵢ, S=Sᵢ, u=ϵ, v=ϵ)
 
 @printf("Construct Simulation object\n")
 simulation = Simulation(model; Δt=Δt, stop_time=stop_time)
@@ -73,13 +82,20 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 
 @printf("Setup output writer\n")
 save_fields_interval = 6hours
-b = model.tracers.b
+T = model.tracers.T
+S = model.tracers.S
 filename_prefix = "output_MOC"
-simulation.output_writers[:full] = JLD2OutputWriter(model, (; b);
-        filename = filename_prefix * "_full",
-        schedule = TimeInterval(save_fields_interval),
-        overwrite_existing = true,
+simulation.output_writers[:full] = NetCDFWriter(
+    model, (;T,S), filename=filename_prefix * "_full.nc",
+    schedule = TimeInterval(save_fields_interval),
+    overwrite_existing = true,
 )
+
+# = JLD2Writer(model, (; b);
+#        filename = filename_prefix * "_full",
+#        schedule = TimeInterval(save_fields_interval),
+#        overwrite_existing = true,
+#)
 
 
 
