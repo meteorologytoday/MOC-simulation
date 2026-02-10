@@ -5,8 +5,13 @@ using Oceananigans.Units
 using Oceananigans.OutputWriters
 #using CUDA
 
-Δt=3600seconds
-stop_time=10days
+using Base.Threads
+
+@printf("Print out thread information:\n")
+@printf("nthread = %d\n", nthreads())
+
+Δt=300seconds
+stop_time=360days
 
 # 1 degree
 nlat = 120
@@ -80,16 +85,34 @@ progress(sim) = @printf("Iter: % 6d, sim time: % 1.3f, wall time: % 10s, Δt: % 
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 
+simulation.output_writers[:checkpointer] = Checkpointer(model, 
+    schedule = TimeInterval(360days),
+    prefix = "my_checkpoint",       # Filename prefix
+    cleanup = false,                  # Keep only the most recent checkpoint
+)
+
+
 @printf("Setup output writer\n")
-save_fields_interval = 6hours
+save_fields_interval = 30days
 T = model.tracers.T
 S = model.tracers.S
-filename_prefix = "output_MOC"
+filename_prefix = "output_thermal"
 simulation.output_writers[:full] = NetCDFWriter(
-    model, (;T,S), filename=filename_prefix * "_full.nc",
+    model, (;T,S), filename=filename_prefix * ".nc",
     schedule = TimeInterval(save_fields_interval),
     overwrite_existing = true,
 )
+
+u = model.velocities.u
+v = model.velocities.v
+w = model.velocities.w
+filename_prefix = "output_momentum"
+simulation.output_writers[:full] = NetCDFWriter(
+    model, (;u, v, w), filename=filename_prefix * ".nc",
+    schedule = TimeInterval(save_fields_interval),
+    overwrite_existing = true,
+)
+
 
 # = JLD2Writer(model, (; b);
 #        filename = filename_prefix * "_full",
@@ -106,6 +129,7 @@ display(simulation)
 @printf("Run model\n")
 run!(simulation)
 
+exit()
 # %%
 
 @printf("Plotting...\n")
